@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PiggyBank, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import Card from '../../components/common/Card';
@@ -8,6 +9,7 @@ import { savingsAccounts, getSavingsGrowthData, getDepositVsWithdrawData, getInc
 import styles from './Savings.module.css';
 
 const Savings: React.FC = () => {
+  const navigate = useNavigate();
   const savingsGrowth = getSavingsGrowthData();
   const depositVsWithdraw = getDepositVsWithdrawData();
   const memberContributions = getIncomeByMember();
@@ -31,7 +33,9 @@ const Savings: React.FC = () => {
     <div className={styles.savingsPage}>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Savings</h1>
-        <Button leftIcon={<PiggyBank size={16} />}>Add Deposit</Button>
+        <Button leftIcon={<PiggyBank size={16} />} onClick={() => navigate('/savings/add')}>
+          Add Deposit
+        </Button>
       </div>
 
       {/* Summary Cards */}

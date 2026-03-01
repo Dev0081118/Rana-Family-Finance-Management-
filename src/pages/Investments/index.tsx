@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar } from 'recharts';
 import Card from '../../components/common/Card';
@@ -8,6 +9,7 @@ import { investments, getInvestmentDistribution, getNetWorthData } from '../../d
 import styles from './Investments.module.css';
 
 const Investments: React.FC = () => {
+  const navigate = useNavigate();
   const investmentDistribution = getInvestmentDistribution();
   const netWorthData = getNetWorthData();
 
@@ -39,7 +41,9 @@ const Investments: React.FC = () => {
     <div className={styles.investmentsPage}>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Investments</h1>
-        <Button leftIcon={<Wallet size={16} />}>Add Investment</Button>
+        <Button leftIcon={<Wallet size={16} />} onClick={() => navigate('/investments/add')}>
+          Add Investment
+        </Button>
       </div>
 
       {/* Summary Cards */}

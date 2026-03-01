@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ComposedChart, Area } from 'recharts';
 import Card from '../../components/common/Card';
 import ChartCard from '../../components/charts/ChartCard';
@@ -10,6 +11,7 @@ import { transactions, getMonthlyExpenseData, getExpenseByCategory, getExpenseBy
 import styles from './Expenses.module.css';
 
 const Expenses: React.FC = () => {
+  const navigate = useNavigate();
   const expenseTransactions = transactions.filter(t => t.type === 'expense');
   const monthlyExpenseData = getMonthlyExpenseData();
   const expenseByCategory = getExpenseByCategory();
@@ -47,7 +49,9 @@ const Expenses: React.FC = () => {
     <div className={styles.expensesPage}>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Expenses</h1>
-        <Button leftIcon={<Plus size={16} />} variant="danger">Add Expense</Button>
+        <Button leftIcon={<Plus size={16} />} variant="danger" onClick={() => navigate('/expenses/add')}>
+          Add Expense
+        </Button>
       </div>
 
       {/* Summary Cards */}

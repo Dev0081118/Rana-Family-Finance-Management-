@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import Card from '../../components/common/Card';
 import ChartCard from '../../components/charts/ChartCard';
@@ -10,6 +11,7 @@ import { transactions, getMonthlyIncomeData, getIncomeByCategory, getIncomeByMem
 import styles from './Income.module.css';
 
 const Income: React.FC = () => {
+  const navigate = useNavigate();
   const incomeTransactions = transactions.filter(t => t.type === 'income');
   const monthlyIncomeData = getMonthlyIncomeData();
   const incomeByCategory = getIncomeByCategory();
@@ -40,7 +42,9 @@ const Income: React.FC = () => {
     <div className={styles.incomePage}>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Income</h1>
-        <Button leftIcon={<Plus size={16} />}>Add Income</Button>
+        <Button leftIcon={<Plus size={16} />} onClick={() => navigate('/income/add')}>
+          Add Income
+        </Button>
       </div>
 
       {/* Summary Cards */}
