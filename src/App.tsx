@@ -21,7 +21,7 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <MainLayout currentMonth={currentMonth} onMonthChange={handleMonthChange}>
           <Routes>
             <Route path="/" element={<Dashboard />} />

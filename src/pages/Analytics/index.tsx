@@ -5,13 +5,13 @@ import { getNetWorthData, getYearlyIncomeExpense, getSavingsGrowthData, getIncom
 import styles from './Analytics.module.css';
 
 const Analytics: React.FC = () => {
-  const netWorthData = getNetWorthData();
-  const yearlyIncomeExpense = getYearlyIncomeExpense();
-  const savingsGrowth = getSavingsGrowthData();
-  const incomeByMember = getIncomeByMember();
-  const expenseByMember = getExpenseByMember();
-  const topExpenseCategories = getTopExpenseCategories();
-  const expenseByCategory = getExpenseByCategory();
+  const netWorthData = getNetWorthData() || [];
+  const yearlyIncomeExpense = getYearlyIncomeExpense() || [];
+  const savingsGrowth = getSavingsGrowthData() || [];
+  const incomeByMember = getIncomeByMember() || [];
+  const expenseByMember = getExpenseByMember() || [];
+  const topExpenseCategories = getTopExpenseCategories() || [];
+  const expenseByCategory = getExpenseByCategory() || [];
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('en-US', {

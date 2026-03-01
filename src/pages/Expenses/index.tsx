@@ -26,8 +26,8 @@ const Expenses: React.FC = () => {
   };
 
   const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const highestCategory = expenseByCategory[0];
-  const topSpender = expenseByMember[0];
+  const highestCategory = expenseByCategory[0] || { category: 'N/A', amount: 0 };
+  const topSpender = expenseByMember[0] || { memberName: 'N/A', amount: 0 };
 
   const columns = [
     { key: 'date', header: 'Date', sortable: true },

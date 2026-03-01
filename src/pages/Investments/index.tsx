@@ -14,7 +14,7 @@ const Investments: React.FC = () => {
   const totalInvested = investments.reduce((sum, inv) => sum + inv.amountInvested, 0);
   const currentValue = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
   const profitLoss = currentValue - totalInvested;
-  const roi = (profitLoss / totalInvested) * 100;
+  const roi = totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('en-US', {

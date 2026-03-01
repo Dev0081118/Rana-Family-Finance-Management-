@@ -7,10 +7,10 @@ import { getSummaryCards, getMonthlyIncomeData, getMonthlyExpenseData, getExpens
 import styles from './Dashboard.module.css';
 
 const Dashboard: React.FC = () => {
-  const summaryCards = getSummaryCards();
-  const incomeData = getMonthlyIncomeData();
-  const expenseData = getMonthlyExpenseData();
-  const expenseByCategory = getExpenseByCategory();
+  const summaryCards = getSummaryCards() || [];
+  const incomeData = getMonthlyIncomeData() || [];
+  const expenseData = getMonthlyExpenseData() || [];
+  const expenseByCategory = getExpenseByCategory() || [];
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('en-US', {

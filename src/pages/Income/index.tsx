@@ -25,8 +25,8 @@ const Income: React.FC = () => {
   };
 
   const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const highestCategory = incomeByCategory[0];
-  const topContributor = incomeByMember[0];
+  const highestCategory = incomeByCategory[0] || { category: 'N/A', amount: 0 };
+  const topContributor = incomeByMember[0] || { memberName: 'N/A', amount: 0 };
 
   const columns = [
     { key: 'date', header: 'Date', sortable: true },
