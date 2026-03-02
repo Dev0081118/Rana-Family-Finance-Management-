@@ -15,9 +15,9 @@ interface TrendChartProps {
 
 const formatCurrency = (value: number): string => {
   if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}k`;
+    return `₹${(value / 1000).toFixed(1)}k`;
   }
-  return `$${value.toFixed(0)}`;
+  return `₹${value.toFixed(0)}`;
 };
 
 const formatDate = (dateStr: string): string => {

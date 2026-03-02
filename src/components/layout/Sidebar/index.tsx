@@ -9,6 +9,7 @@ import {
   LogIn,
   LogOut,
   Settings,
+  BarChart3,
 } from 'lucide-react';
 import { NavItem } from '../../../types';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -24,6 +25,7 @@ interface SidebarProps {
 }
 
 const navItems: NavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={20} />, path: '/dashboard' },
   { id: 'income', label: 'Income', icon: <TrendingUp size={20} />, path: '/income' },
   { id: 'expenses', label: 'Expenses', icon: <TrendingDown size={20} />, path: '/expenses' },
   { id: 'savings', label: 'Savings', icon: <PiggyBank size={20} />, path: '/savings' },
