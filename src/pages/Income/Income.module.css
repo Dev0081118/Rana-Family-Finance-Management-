@@ -134,6 +134,130 @@
 }
 
 /* ============================================
+   ACTION BUTTONS
+   ============================================ */
+
+.actionButtons {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* ============================================
+   DETAIL VIEW MODAL
+   ============================================ */
+
+.detailView {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detailRow:last-child {
+  border-bottom: none;
+}
+
+.detailRow strong {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  min-width: 140px;
+}
+
+.detailRow span {
+  color: var(--text-primary);
+  text-align: right;
+  word-break: break-word;
+}
+
+/* ============================================
+   EDIT FORM
+   ============================================ */
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.formGroup label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  padding: var(--space-3);
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  outline: none;
+  border-color: var(--border-color-focus);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.formGroup input:disabled,
+.formGroup select:disabled,
+.formGroup textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.formGroup .inputError {
+  border-color: var(--color-danger);
+}
+
+.formGroup .inputError:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.fieldError {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-1);
+}
+
+.formActions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.errorMessage {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-sm);
+}
+
+/* ============================================
    RESPONSIVE ADJUSTMENTS
    ============================================ */
 
@@ -151,6 +275,32 @@
   .filterSelect {
     width: 100%;
   }
+
+  .actionButtons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .formActions {
+    flex-direction: column-reverse;
+  }
+
+  .formActions button {
+    width: 100%;
+  }
+
+  .detailRow {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .detailRow strong {
+    min-width: auto;
+  }
+
+  .detailRow span {
+    text-align: left;
+  }
 }
 
 @media (min-width: 768px) and (max-width: 1024px) {
@@ -163,7 +313,11 @@
 @media (prefers-reduced-motion: reduce) {
   .filterSelect,
   .summaryCard,
-  .chartCard {
+  .chartCard,
+  .actionButtons,
+  .formGroup input,
+  .formGroup select,
+  .formGroup textarea {
     transition: none;
   }
 }

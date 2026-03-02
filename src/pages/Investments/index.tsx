@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, Eye, Edit2, Trash2, Wallet } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar } from 'recharts';
 import Card from '../../components/common/Card';
 import ChartCard from '../../components/charts/ChartCard';
 import Button from '../../components/common/Button';
+import Table from '../../components/common/Table';
+import Modal from '../../components/common/Modal';
+import ConfirmationDialog from '../../components/common/ConfirmationDialog';
 import { investmentService } from '../../services/api';
 import { authService } from '../../services/api';
 import styles from './Investments.module.css';
@@ -47,6 +51,13 @@ const Investments: React.FC = () => {
   const isMounted = React.useRef(true);
   const [shouldRefresh, setShouldRefresh] = useState(false);
 
+  // Modal states
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
   const currentUser = authService.getCurrentUser();
 
   const fetchInvestments = async (retryCount = 0): Promise<boolean> => {
@@ -65,7 +76,6 @@ const Investments: React.FC = () => {
 
       const status = err.response?.status;
       
-      // Handle 429 Too Many Requests with exponential backoff
       if (status === 429) {
         const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
         console.warn(`Rate limited. Retrying in ${delay}ms (attempt ${retryCount + 1})`);
@@ -93,9 +103,8 @@ const Investments: React.FC = () => {
     return () => {
       isMounted.current = false;
     };
-  }, [currentUser?.id]); // Only depend on user ID, not whole object
+  }, [currentUser?.id]);
 
-  // Refresh data when returning from add page - use state flag instead of location.state
   useEffect(() => {
     if (location.state?.refresh) {
       setShouldRefresh(true);
@@ -113,7 +122,6 @@ const Investments: React.FC = () => {
     }
   }, [shouldRefresh]);
 
-  // Retry handler for error button
   const handleRetry = () => {
     fetchInvestments();
   };
@@ -185,7 +193,6 @@ const Investments: React.FC = () => {
 
   // Process net worth growth over time
   const processNetWorthData = (): NetWorthData[] => {
-    // Group investments by month/year
     const monthlyMap = new Map<string, { invested: number; current: number }>();
     
     investments.forEach(inv => {
@@ -201,8 +208,6 @@ const Investments: React.FC = () => {
       data.current += inv.currentValue;
     });
 
-    // For simplicity, we'll show current value trend
-    // In a real app, you'd want to track value changes over time
     return Array.from(monthlyMap.entries())
       .map(([date, data]) => ({ date, value: data.current }))
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -211,6 +216,140 @@ const Investments: React.FC = () => {
   const investmentDistribution = processInvestmentDistribution();
   const assetTypeData = processAssetTypeData();
   const netWorthData = processNetWorthData();
+
+  // CRUD Action Handlers
+  const handleView = (investment: Investment) => {
+    setSelectedInvestment(investment);
+    setViewModalOpen(true);
+  };
+
+  const handleEdit = (investment: Investment) => {
+    setSelectedInvestment(investment);
+    setEditModalOpen(true);
+  };
+
+  const handleDeleteClick = (investment: Investment) => {
+    setSelectedInvestment(investment);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedInvestment) return;
+
+    try {
+      setActionLoading(true);
+      await investmentService.delete(selectedInvestment._id);
+      setDeleteDialogOpen(false);
+      setSelectedInvestment(null);
+      await fetchInvestments();
+    } catch (err: any) {
+      console.error('Error deleting investment:', err);
+      setError(err.response?.data?.message || 'Failed to delete investment');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleEditSubmit = async (formData: { 
+    assetName: string; 
+    assetType: string; 
+    investedAmount: number; 
+    currentValue: number; 
+    purchaseDate: string 
+  }) => {
+    if (!selectedInvestment) return;
+
+    try {
+      setActionLoading(true);
+      await investmentService.update(selectedInvestment._id, formData);
+      setEditModalOpen(false);
+      setSelectedInvestment(null);
+      await fetchInvestments();
+    } catch (err: any) {
+      console.error('Error updating investment:', err);
+      throw err;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const closeModals = () => {
+    setViewModalOpen(false);
+    setEditModalOpen(false);
+    setDeleteDialogOpen(false);
+    setSelectedInvestment(null);
+  };
+
+  // Table columns with action buttons
+  const columns = [
+    { key: 'assetName', header: 'Asset Name', sortable: true },
+    { key: 'assetType', header: 'Asset Type', sortable: true },
+    { key: 'investedAmount', header: 'Invested', sortable: true, render: (value: number) => formatCurrency(value) },
+    { key: 'currentValue', header: 'Current Value', sortable: true, render: (value: number) => formatCurrency(value) },
+    { key: 'purchaseDate', header: 'Purchase Date', sortable: true, render: (value: string) => new Date(value).toLocaleDateString() },
+    {
+      key: 'profitLoss',
+      header: 'P&L',
+      sortable: true,
+      render: (value: number, row: Investment) => {
+        const profit = row.currentValue - row.investedAmount;
+        const isPositive = profit >= 0;
+        return (
+          <span className={isPositive ? styles.amountPositive : styles.amountNegative}>
+            {isPositive ? '+' : ''}{formatCurrency(profit)}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'roi',
+      header: 'ROI %',
+      sortable: true,
+      render: (value: number, row: Investment) => {
+        const profit = row.currentValue - row.investedAmount;
+        const roi = row.investedAmount > 0 ? (profit / row.investedAmount) * 100 : 0;
+        const isPositive = roi >= 0;
+        return (
+          <span className={isPositive ? styles.amountPositive : styles.amountNegative}>
+            {isPositive ? '+' : ''}{roi.toFixed(1)}%
+          </span>
+        );
+      }
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      sortable: false,
+      render: (_: any, row: Investment) => (
+        <div className={styles.actionButtons}>
+          <Button
+            variant="ghost"
+            size="small"
+            onClick={(e) => { e.stopPropagation(); handleView(row); }}
+            aria-label="View investment"
+          >
+            <Eye size={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="small"
+            onClick={(e) => { e.stopPropagation(); handleEdit(row); }}
+            aria-label="Edit investment"
+          >
+            <Edit2 size={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="small"
+            onClick={(e) => { e.stopPropagation(); handleDeleteClick(row); }}
+            aria-label="Delete investment"
+          >
+            <Trash2 size={16} />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   if (loading) {
     return (
@@ -301,10 +440,10 @@ const Investments: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ category, percentage }) => `${category} (${percentage}%)`}
+                  label={({ name, percentage }) => `${name} (${percentage}%)`}
                   outerRadius={80}
                   fill="#8884d8"
-                  dataKey="amount"
+                  dataKey="value"
                 >
                   {investmentDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -378,38 +517,277 @@ const Investments: React.FC = () => {
         </ChartCard>
       </div>
 
-      {/* Investment List */}
+      {/* Data Table */}
       <Card title="Investment Portfolio" subtitle={`${investments.length} investments`}>
-        <div className={styles.investmentsList}>
-          {investments.map((investment) => {
-            const invProfit = investment.currentValue - investment.investedAmount;
-            const invROI = investment.investedAmount > 0 ? (invProfit / investment.investedAmount) * 100 : 0;
-            const isPositive = invProfit >= 0;
-
-            return (
-              <div key={investment._id} className={styles.investmentCard}>
-                <div className={styles.investmentHeader}>
-                  <div>
-                    <h4 className={styles.investmentName}>{investment.assetName}</h4>
-                    <span className={styles.investmentType}>{investment.assetType}</span>
-                  </div>
-                  <div className={`${styles.investmentROI} ${isPositive ? styles.positive : styles.negative}`}>
-                    {isPositive ? '+' : ''}{invROI.toFixed(1)}%
-                  </div>
-                </div>
-                <div className={styles.investmentValue}>
-                  {formatCurrency(investment.currentValue)}
-                </div>
-                <div className={styles.investmentDetails}>
-                  <span>Invested: {formatCurrency(investment.investedAmount)}</span>
-                  <span>P&L: <span className={isPositive ? styles.amountPositive : styles.amountNegative}>{formatCurrency(invProfit)}</span></span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <Table
+          data={investments}
+          columns={columns}
+        />
       </Card>
+
+      {/* View Modal */}
+      <Modal
+        isOpen={viewModalOpen}
+        onClose={() => { setViewModalOpen(false); setSelectedInvestment(null); }}
+        title="Investment Details"
+        size="md"
+      >
+        {selectedInvestment && (
+          <div className={styles.detailView}>
+            <div className={styles.detailRow}>
+              <strong>Asset Name:</strong>
+              <span>{selectedInvestment.assetName}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Asset Type:</strong>
+              <span>{selectedInvestment.assetType}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Invested Amount:</strong>
+              <span>{formatCurrency(selectedInvestment.investedAmount)}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Current Value:</strong>
+              <span>{formatCurrency(selectedInvestment.currentValue)}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Profit/Loss:</strong>
+              <span className={selectedInvestment.currentValue - selectedInvestment.investedAmount >= 0 ? styles.amountPositive : styles.amountNegative}>
+                {formatCurrency(selectedInvestment.currentValue - selectedInvestment.investedAmount)}
+              </span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>ROI:</strong>
+              <span className={selectedInvestment.currentValue - selectedInvestment.investedAmount >= 0 ? styles.amountPositive : styles.amountNegative}>
+                {selectedInvestment.investedAmount > 0 ? ((selectedInvestment.currentValue - selectedInvestment.investedAmount) / selectedInvestment.investedAmount * 100).toFixed(1) : '0.0'}%
+              </span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Purchase Date:</strong>
+              <span>{new Date(selectedInvestment.purchaseDate).toLocaleDateString()}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Member:</strong>
+              <span>{selectedInvestment.member?.name || 'N/A'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Created:</strong>
+              <span>{new Date(selectedInvestment.createdAt).toLocaleString()}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Last Updated:</strong>
+              <span>{new Date(selectedInvestment.updatedAt).toLocaleString()}</span>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => { setEditModalOpen(false); setSelectedInvestment(null); }}
+        title="Edit Investment"
+        size="md"
+      >
+        {selectedInvestment && (
+          <EditInvestmentForm
+            investment={selectedInvestment}
+            onSubmit={handleEditSubmit}
+            onCancel={() => { setEditModalOpen(false); setSelectedInvestment(null); }}
+            loading={actionLoading}
+          />
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => { setDeleteDialogOpen(false); setSelectedInvestment(null); }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Investment"
+        message={`Are you sure you want to delete this investment? This action cannot be undone.`}
+        confirmLabel="Delete"
+        loading={actionLoading}
+      />
     </div>
+  );
+};
+
+// Edit Investment Form Component
+interface EditInvestmentFormProps {
+  investment: Investment;
+  onSubmit: (data: { 
+    assetName: string; 
+    assetType: string; 
+    investedAmount: number; 
+    currentValue: number; 
+    purchaseDate: string 
+  }) => Promise<void>;
+  onCancel: () => void;
+  loading: boolean;
+}
+
+const EditInvestmentForm: React.FC<EditInvestmentFormProps> = ({ investment, onSubmit, onCancel, loading }) => {
+  const [assetName, setAssetName] = useState(investment.assetName);
+  const [assetType, setAssetType] = useState(investment.assetType);
+  const [investedAmount, setInvestedAmount] = useState(investment.investedAmount.toString());
+  const [currentValue, setCurrentValue] = useState(investment.currentValue.toString());
+  const [purchaseDate, setPurchaseDate] = useState(investment.purchaseDate.split('T')[0]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!assetName.trim()) {
+      newErrors.assetName = 'Please enter an asset name';
+    }
+    
+    if (!assetType) {
+      newErrors.assetType = 'Please select an asset type';
+    }
+    
+    if (!investedAmount || isNaN(Number(investedAmount)) || Number(investedAmount) <= 0) {
+      newErrors.investedAmount = 'Please enter a valid invested amount';
+    }
+    
+    if (!currentValue || isNaN(Number(currentValue)) || Number(currentValue) < 0) {
+      newErrors.currentValue = 'Please enter a valid current value';
+    }
+    
+    if (!purchaseDate) {
+      newErrors.purchaseDate = 'Please select a purchase date';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validate()) {
+      return;
+    }
+
+    try {
+      await onSubmit({
+        assetName: assetName.trim(),
+        assetType,
+        investedAmount: parseFloat(investedAmount),
+        currentValue: parseFloat(currentValue),
+        purchaseDate: new Date(purchaseDate).toISOString(),
+      });
+    } catch (err: any) {
+      if (err.response?.data?.message) {
+        setErrors({ general: err.response.data.message });
+      }
+    }
+  };
+
+  const assetTypes = [
+    'Stocks',
+    'Bonds',
+    'Mutual Funds',
+    'Cryptocurrency',
+    'Real Estate',
+    'Gold',
+    'Fixed Deposit',
+    'PPF',
+    'SIP',
+    'Other'
+  ];
+
+  return (
+    <form onSubmit={handleSubmit} className={styles.editForm}>
+      {errors.general && (
+        <div className={styles.errorMessage}>{errors.general}</div>
+      )}
+      
+      <div className={styles.formGroup}>
+        <label htmlFor="assetName">Asset Name *</label>
+        <input
+          type="text"
+          id="assetName"
+          value={assetName}
+          onChange={(e) => setAssetName(e.target.value)}
+          className={errors.assetName ? styles.inputError : ''}
+          disabled={loading}
+        />
+        {errors.assetName && <span className={styles.fieldError}>{errors.assetName}</span>}
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="assetType">Asset Type *</label>
+        <select
+          id="assetType"
+          value={assetType}
+          onChange={(e) => setAssetType(e.target.value)}
+          className={errors.assetType ? styles.inputError : ''}
+          disabled={loading}
+        >
+          {assetTypes.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+        {errors.assetType && <span className={styles.fieldError}>{errors.assetType}</span>}
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="investedAmount">Invested Amount *</label>
+        <input
+          type="number"
+          id="investedAmount"
+          value={investedAmount}
+          onChange={(e) => setInvestedAmount(e.target.value)}
+          className={errors.investedAmount ? styles.inputError : ''}
+          disabled={loading}
+        />
+        {errors.investedAmount && <span className={styles.fieldError}>{errors.investedAmount}</span>}
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="currentValue">Current Value *</label>
+        <input
+          type="number"
+          id="currentValue"
+          value={currentValue}
+          onChange={(e) => setCurrentValue(e.target.value)}
+          className={errors.currentValue ? styles.inputError : ''}
+          disabled={loading}
+        />
+        {errors.currentValue && <span className={styles.fieldError}>{errors.currentValue}</span>}
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="purchaseDate">Purchase Date *</label>
+        <input
+          type="date"
+          id="purchaseDate"
+          value={purchaseDate}
+          onChange={(e) => setPurchaseDate(e.target.value)}
+          className={errors.purchaseDate ? styles.inputError : ''}
+          disabled={loading}
+        />
+        {errors.purchaseDate && <span className={styles.fieldError}>{errors.purchaseDate}</span>}
+      </div>
+
+      <div className={styles.formActions}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          loading={loading}
+        >
+          Update Investment
+        </Button>
+      </div>
+    </form>
   );
 };
 

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, Eye, Edit2, Trash2, PiggyBank, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { PiggyBank, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import Card from '../../components/common/Card';
 import ChartCard from '../../components/charts/ChartCard';
 import Button from '../../components/common/Button';
+import Table from '../../components/common/Table';
+import Modal from '../../components/common/Modal';
+import ConfirmationDialog from '../../components/common/ConfirmationDialog';
 import { savingsService } from '../../services/api';
 import { authService } from '../../services/api';
 import styles from './Savings.module.css';
@@ -51,6 +54,13 @@ const Savings: React.FC = () => {
   const isMounted = React.useRef(true);
   const [shouldRefresh, setShouldRefresh] = useState(false);
 
+  // Modal states
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedSaving, setSelectedSaving] = useState<SavingTransaction | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
   const currentUser = authService.getCurrentUser();
 
   const fetchSavings = async (retryCount = 0): Promise<boolean> => {
@@ -69,7 +79,6 @@ const Savings: React.FC = () => {
 
       const status = err.response?.status;
       
-      // Handle 429 Too Many Requests with exponential backoff
       if (status === 429) {
         const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
         console.warn(`Rate limited. Retrying in ${delay}ms (attempt ${retryCount + 1})`);
@@ -97,9 +106,8 @@ const Savings: React.FC = () => {
     return () => {
       isMounted.current = false;
     };
-  }, [currentUser?.id]); // Only depend on user ID, not whole object
+  }, [currentUser?.id]);
 
-  // Refresh data when returning from add page - use state flag instead of location.state
   useEffect(() => {
     if (location.state?.refresh) {
       setShouldRefresh(true);
@@ -117,7 +125,6 @@ const Savings: React.FC = () => {
     }
   }, [shouldRefresh]);
 
-  // Retry handler for error button
   const handleRetry = () => {
     fetchSavings();
   };
@@ -166,12 +173,10 @@ const Savings: React.FC = () => {
       growthMap.set(dateKey, runningBalance);
     });
 
-    // If no savings, return empty array
     if (growthMap.size === 0) {
       return [];
     }
 
-    // Fill in missing dates with previous balance
     const dates = Array.from(growthMap.keys()).sort();
     const filledData: GrowthData[] = [];
     let lastBalance = 0;
@@ -225,6 +230,111 @@ const Savings: React.FC = () => {
   const depositVsWithdraw = processDepositVsWithdraw();
   const memberContributions = processMemberContributions();
 
+  // CRUD Action Handlers
+  const handleView = (saving: SavingTransaction) => {
+    setSelectedSaving(saving);
+    setViewModalOpen(true);
+  };
+
+  const handleEdit = (saving: SavingTransaction) => {
+    setSelectedSaving(saving);
+    setEditModalOpen(true);
+  };
+
+  const handleDeleteClick = (saving: SavingTransaction) => {
+    setSelectedSaving(saving);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedSaving) return;
+
+    try {
+      setActionLoading(true);
+      await savingsService.delete(selectedSaving._id);
+      setDeleteDialogOpen(false);
+      setSelectedSaving(null);
+      await fetchSavings();
+    } catch (err: any) {
+      console.error('Error deleting saving:', err);
+      setError(err.response?.data?.message || 'Failed to delete saving');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleEditSubmit = async (formData: { type: 'deposit' | 'withdraw'; amount: number; date: string; note?: string }) => {
+    if (!selectedSaving) return;
+
+    try {
+      setActionLoading(true);
+      await savingsService.update(selectedSaving._id, formData);
+      setEditModalOpen(false);
+      setSelectedSaving(null);
+      await fetchSavings();
+    } catch (err: any) {
+      console.error('Error updating saving:', err);
+      throw err;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const closeModals = () => {
+    setViewModalOpen(false);
+    setEditModalOpen(false);
+    setDeleteDialogOpen(false);
+    setSelectedSaving(null);
+  };
+
+  // Table columns with action buttons
+  const columns = [
+    { key: 'date', header: 'Date', sortable: true, render: (value: string) => new Date(value).toLocaleDateString() },
+    { key: 'type', header: 'Type', sortable: true, render: (value: string) => (
+      <span className={value === 'deposit' ? styles.amountPositive : styles.amountNegative}>
+        {value === 'deposit' ? 'Deposit' : 'Withdraw'}
+      </span>
+    )},
+    { key: 'amount', header: 'Amount', sortable: true, render: (value: number) => (
+      <span className={styles.amountPositive}>+{formatCurrency(value)}</span>
+    )},
+    { key: 'note', header: 'Note', sortable: true, render: (value: string) => value || '-' },
+    { key: 'member', header: 'Member', sortable: true, render: (value: any) => value?.name || 'N/A' },
+    {
+      key: 'actions',
+      header: 'Actions',
+      sortable: false,
+      render: (_: any, row: SavingTransaction) => (
+        <div className={styles.actionButtons}>
+          <Button
+            variant="ghost"
+            size="small"
+            onClick={(e) => { e.stopPropagation(); handleView(row); }}
+            aria-label="View saving"
+          >
+            <Eye size={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="small"
+            onClick={(e) => { e.stopPropagation(); handleEdit(row); }}
+            aria-label="Edit saving"
+          >
+            <Edit2 size={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="small"
+            onClick={(e) => { e.stopPropagation(); handleDeleteClick(row); }}
+            aria-label="Delete saving"
+          >
+            <Trash2 size={16} />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   if (loading) {
     return (
       <div className={styles.savingsPage}>
@@ -262,8 +372,6 @@ const Savings: React.FC = () => {
     );
   }
 
-  const accountColors = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444'];
-
   return (
     <div className={styles.savingsPage}>
       <div className={styles.pageHeader}>
@@ -285,20 +393,12 @@ const Savings: React.FC = () => {
           <div className={styles.summaryCard}>
             <h3 className={styles.summaryCardTitle}>Total Deposits</h3>
             <p className={styles.summaryCardValue}>{formatCurrency(totalDeposits)}</p>
-            <div className={`${styles.summaryCardChange} positive`}>
-              <ArrowUpRight size={16} />
-              <span>+12.5%</span>
-            </div>
           </div>
         </Card>
         <Card variant="danger">
           <div className={styles.summaryCard}>
             <h3 className={styles.summaryCardTitle}>Total Withdrawals</h3>
             <p className={styles.summaryCardValue}>{formatCurrency(totalWithdrawals)}</p>
-            <div className={`${styles.summaryCardChange} negative`}>
-              <ArrowDownRight size={16} />
-              <span>-5.2%</span>
-            </div>
           </div>
         </Card>
       </div>
@@ -323,7 +423,7 @@ const Savings: React.FC = () => {
                   formatter={(value: number) => [formatCurrency(value), 'Balance']}
                   cursor={{ stroke: 'var(--border-color)', strokeWidth: 1 }}
                 />
-                <Line type="monotone" dataKey="value" stroke="#0ea5e9" strokeWidth={2} dot={{ fill: '#0ea5e9', r: 3 }} animationDuration={1000} />
+                <Line type="monotone" dataKey="balance" stroke="#0ea5e9" strokeWidth={2} dot={{ fill: '#0ea5e9', r: 3 }} animationDuration={1000} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -335,7 +435,7 @@ const Savings: React.FC = () => {
               <BarChart data={depositVsWithdraw}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                 <XAxis dataKey="name" stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value / 1000}k`} width={40} />
+                <YAxis stroke="var(--text-tertiary}" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value / 1000}k`} width={40} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'var(--bg-card)',
@@ -391,36 +491,218 @@ const Savings: React.FC = () => {
         </ChartCard>
       </div>
 
-      {/* Savings Accounts */}
+      {/* Data Table */}
       <Card title="Savings Transactions" subtitle={`${savings.length} transactions`}>
-        <div className={styles.transactionsGrid}>
-          {savings.map((saving, index) => (
-            <div key={saving._id} className={styles.transactionCard}>
-              <div className={styles.transactionHeader}>
-                <div className={styles.transactionIcon} style={{ backgroundColor: accountColors[index % accountColors.length] }}>
-                  <PiggyBank size={20} />
-                </div>
-                <div>
-                  <h4 className={styles.transactionName}>
-                    {saving.type === 'deposit' ? 'Deposit' : 'Withdrawal'}
-                  </h4>
-                  <p className={styles.transactionDate}>
-                    {new Date(saving.date).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <div className={styles.transactionAmount}>
-                {saving.type === 'deposit' ? '+' : '-'}
-                {formatCurrency(saving.amount)}
-              </div>
-              {saving.note && (
-                <p className={styles.transactionNote}>{saving.note}</p>
-              )}
-            </div>
-          ))}
-        </div>
+        <Table
+          data={savings}
+          columns={columns}
+        />
       </Card>
+
+      {/* View Modal */}
+      <Modal
+        isOpen={viewModalOpen}
+        onClose={() => { setViewModalOpen(false); setSelectedSaving(null); }}
+        title="Saving Details"
+        size="md"
+      >
+        {selectedSaving && (
+          <div className={styles.detailView}>
+            <div className={styles.detailRow}>
+              <strong>Type:</strong>
+              <span>{selectedSaving.type === 'deposit' ? 'Deposit' : 'Withdrawal'}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Amount:</strong>
+              <span>{formatCurrency(selectedSaving.amount)}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Date:</strong>
+              <span>{new Date(selectedSaving.date).toLocaleDateString()}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Member:</strong>
+              <span>{selectedSaving.member?.name || 'N/A'}</span>
+            </div>
+            {selectedSaving.note && (
+              <div className={styles.detailRow}>
+                <strong>Note:</strong>
+                <span>{selectedSaving.note}</span>
+              </div>
+            )}
+            <div className={styles.detailRow}>
+              <strong>Created:</strong>
+              <span>{new Date(selectedSaving.createdAt).toLocaleString()}</span>
+            </div>
+            <div className={styles.detailRow}>
+              <strong>Last Updated:</strong>
+              <span>{new Date(selectedSaving.updatedAt).toLocaleString()}</span>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => { setEditModalOpen(false); setSelectedSaving(null); }}
+        title="Edit Saving"
+        size="md"
+      >
+        {selectedSaving && (
+          <EditSavingForm
+            saving={selectedSaving}
+            onSubmit={handleEditSubmit}
+            onCancel={() => { setEditModalOpen(false); setSelectedSaving(null); }}
+            loading={actionLoading}
+          />
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => { setDeleteDialogOpen(false); setSelectedSaving(null); }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Transaction"
+        message={`Are you sure you want to delete this ${selectedSaving?.type === 'deposit' ? 'deposit' : 'withdrawal'} entry? This action cannot be undone.`}
+        confirmLabel="Delete"
+        loading={actionLoading}
+      />
     </div>
+  );
+};
+
+// Edit Saving Form Component
+interface EditSavingFormProps {
+  saving: SavingTransaction;
+  onSubmit: (data: { type: 'deposit' | 'withdraw'; amount: number; date: string; note?: string }) => Promise<void>;
+  onCancel: () => void;
+  loading: boolean;
+}
+
+const EditSavingForm: React.FC<EditSavingFormProps> = ({ saving, onSubmit, onCancel, loading }) => {
+  const [type, setType] = useState<'deposit' | 'withdraw'>(saving.type);
+  const [amount, setAmount] = useState(saving.amount.toString());
+  const [date, setDate] = useState(saving.date.split('T')[0]);
+  const [note, setNote] = useState(saving.note || '');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!type) {
+      newErrors.type = 'Please select a type';
+    }
+    
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      newErrors.amount = 'Please enter a valid amount greater than 0';
+    }
+    
+    if (!date) {
+      newErrors.date = 'Please select a date';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validate()) {
+      return;
+    }
+
+    try {
+      await onSubmit({
+        type,
+        amount: parseFloat(amount),
+        date: new Date(date).toISOString(),
+        note: note || undefined,
+      });
+    } catch (err: any) {
+      if (err.response?.data?.message) {
+        setErrors({ general: err.response.data.message });
+      }
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className={styles.editForm}>
+      {errors.general && (
+        <div className={styles.errorMessage}>{errors.general}</div>
+      )}
+      
+      <div className={styles.formGroup}>
+        <label htmlFor="type">Type *</label>
+        <select
+          id="type"
+          value={type}
+          onChange={(e) => setType(e.target.value as 'deposit' | 'withdraw')}
+          className={errors.type ? styles.inputError : ''}
+          disabled={loading}
+        >
+          <option value="deposit">Deposit</option>
+          <option value="withdraw">Withdrawal</option>
+        </select>
+        {errors.type && <span className={styles.fieldError}>{errors.type}</span>}
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="amount">Amount *</label>
+        <input
+          type="number"
+          id="amount"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className={errors.amount ? styles.inputError : ''}
+          disabled={loading}
+        />
+        {errors.amount && <span className={styles.fieldError}>{errors.amount}</span>}
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="date">Date *</label>
+        <input
+          type="date"
+          id="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className={errors.date ? styles.inputError : ''}
+          disabled={loading}
+        />
+        {errors.date && <span className={styles.fieldError}>{errors.date}</span>}
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="note">Note</label>
+        <textarea
+          id="note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+          disabled={loading}
+        />
+      </div>
+
+      <div className={styles.formActions}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          loading={loading}
+        >
+          Update Transaction
+        </Button>
+      </div>
+    </form>
   );
 };
 
