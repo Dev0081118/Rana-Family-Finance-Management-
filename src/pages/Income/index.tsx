@@ -54,6 +54,8 @@ const Income: React.FC = () => {
   const [error, setError] = useState('');
   const isMounted = React.useRef(true);
   const [shouldRefresh, setShouldRefresh] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedMember, setSelectedMember] = useState<string>('all');
 
   // Modal states
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -139,11 +141,71 @@ const Income: React.FC = () => {
     }).format(value);
   };
 
-  // Process data for charts
+  // Utility: Get unique months from incomes
+  const getMonthOptions = (): Array<{ value: string; label: string }> => {
+    const monthsSet = new Set<string>();
+    incomes.forEach(income => {
+      const date = new Date(income.date);
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthsSet.add(monthYear);
+    });
+    
+    const sortedMonths = Array.from(monthsSet).sort((a, b) => b.localeCompare(a));
+    
+    return [
+      { value: 'all', label: 'All Months' },
+      ...sortedMonths.map(month => {
+        const [year, m] = month.split('-');
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        return { value: month, label: `${monthNames[parseInt(m) - 1]} ${year}` };
+      })
+    ];
+  };
+
+  // Utility: Get unique members from incomes
+  const getMemberOptions = (): Array<{ value: string; label: string }> => {
+    const membersSet = new Set<string>();
+    incomes.forEach(income => {
+      if (income.member?.name) {
+        membersSet.add(income.member.name);
+      }
+    });
+    
+    const sortedMembers = Array.from(membersSet).sort();
+    
+    return [
+      { value: 'all', label: 'All Members' },
+      ...sortedMembers.map(name => ({ value: name, label: name }))
+    ];
+  };
+
+  // Get filtered incomes based on selected filters
+  const getFilteredIncomes = (): IncomeTransaction[] => {
+    return incomes.filter(income => {
+      let monthMatch = true;
+      let memberMatch = true;
+
+      if (selectedMonth !== 'all') {
+        const date = new Date(income.date);
+        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        monthMatch = monthYear === selectedMonth;
+      }
+
+      if (selectedMember !== 'all') {
+        memberMatch = income.member?.name === selectedMember;
+      }
+
+      return monthMatch && memberMatch;
+    });
+  };
+
+  const filteredIncomes = getFilteredIncomes();
+
+  // Process data for charts using filtered data
   const processMonthlyData = (): MonthlyData[] => {
     const monthlyMap = new Map<string, number>();
     
-    incomes.forEach(income => {
+    filteredIncomes.forEach(income => {
       const date = new Date(income.date);
       const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       monthlyMap.set(monthYear, (monthlyMap.get(monthYear) || 0) + income.amount);
@@ -158,7 +220,7 @@ const Income: React.FC = () => {
     const categoryMap = new Map<string, number>();
     let total = 0;
     
-    incomes.forEach(income => {
+    filteredIncomes.forEach(income => {
       categoryMap.set(income.category, (categoryMap.get(income.category) || 0) + income.amount);
       total += income.amount;
     });
@@ -180,7 +242,7 @@ const Income: React.FC = () => {
     const memberColors = new Map<string, string>();
     const colors = ['#10b981', '#0ea5e9', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
     
-    incomes.forEach(income => {
+    filteredIncomes.forEach(income => {
       const memberName = income.member?.name || 'Unknown';
       memberMap.set(memberName, (memberMap.get(memberName) || 0) + income.amount);
       if (!memberColors.has(memberName)) {
@@ -201,7 +263,7 @@ const Income: React.FC = () => {
   const incomeByCategory = processCategoryData();
   const incomeByMember = processMemberData();
 
-  const totalIncome = incomes.reduce((sum, t) => sum + t.amount, 0);
+  const totalIncome = filteredIncomes.reduce((sum, t) => sum + t.amount, 0);
   const highestCategory = incomeByCategory[0] || { category: 'N/A', amount: 0 };
   const topContributor = incomeByMember[0] || { memberName: 'N/A', amount: 0 };
 
@@ -379,13 +441,27 @@ const Income: React.FC = () => {
         searchPlaceholder="Search income transactions..."
         actions={
           <>
-            <select className={styles.filterSelect}>
-              <option>All Months</option>
-              <option>January 2024</option>
-              <option>December 2023</option>
+            <select
+              className={styles.filterSelect}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              {getMonthOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
-            <select className={styles.filterSelect}>
-              <option value="">All Members</option>
+            <select
+              className={styles.filterSelect}
+              value={selectedMember}
+              onChange={(e) => setSelectedMember(e.target.value)}
+            >
+              {getMemberOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </>
         }
@@ -480,9 +556,9 @@ const Income: React.FC = () => {
       </div>
 
       {/* Data Table */}
-      <Card title="Income Transactions" subtitle={`${incomes.length} transactions`}>
+      <Card title="Income Transactions" subtitle={`${filteredIncomes.length} transactions`}>
         <Table
-          data={incomes}
+          data={filteredIncomes}
           columns={columns}
         />
       </Card>

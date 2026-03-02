@@ -69,6 +69,8 @@ const Expenses: React.FC = () => {
   const [error, setError] = useState('');
   const isMounted = React.useRef(true);
   const [shouldRefresh, setShouldRefresh] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedMember, setSelectedMember] = useState<string>('all');
 
   // Modal states
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -154,11 +156,71 @@ const Expenses: React.FC = () => {
     }).format(value);
   };
 
-  // Process data for charts
+  // Utility: Get unique months from expenses
+  const getMonthOptions = (): Array<{ value: string; label: string }> => {
+    const monthsSet = new Set<string>();
+    expenses.forEach(expense => {
+      const date = new Date(expense.date);
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      monthsSet.add(monthYear);
+    });
+    
+    const sortedMonths = Array.from(monthsSet).sort((a, b) => b.localeCompare(a));
+    
+    return [
+      { value: 'all', label: 'All Months' },
+      ...sortedMonths.map(month => {
+        const [year, m] = month.split('-');
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        return { value: month, label: `${monthNames[parseInt(m) - 1]} ${year}` };
+      })
+    ];
+  };
+
+  // Utility: Get unique members from expenses
+  const getMemberOptions = (): Array<{ value: string; label: string }> => {
+    const membersSet = new Set<string>();
+    expenses.forEach(expense => {
+      if (expense.member?.name) {
+        membersSet.add(expense.member.name);
+      }
+    });
+    
+    const sortedMembers = Array.from(membersSet).sort();
+    
+    return [
+      { value: 'all', label: 'All Members' },
+      ...sortedMembers.map(name => ({ value: name, label: name }))
+    ];
+  };
+
+  // Get filtered expenses based on selected filters
+  const getFilteredExpenses = (): ExpenseTransaction[] => {
+    return expenses.filter(expense => {
+      let monthMatch = true;
+      let memberMatch = true;
+
+      if (selectedMonth !== 'all') {
+        const date = new Date(expense.date);
+        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        monthMatch = monthYear === selectedMonth;
+      }
+
+      if (selectedMember !== 'all') {
+        memberMatch = expense.member?.name === selectedMember;
+      }
+
+      return monthMatch && memberMatch;
+    });
+  };
+
+  const filteredExpenses = getFilteredExpenses();
+
+  // Process data for charts using filtered data
   const processMonthlyData = (): MonthlyData[] => {
     const monthlyMap = new Map<string, number>();
     
-    expenses.forEach(expense => {
+    filteredExpenses.forEach(expense => {
       const date = new Date(expense.date);
       const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       monthlyMap.set(monthYear, (monthlyMap.get(monthYear) || 0) + expense.amount);
@@ -173,7 +235,7 @@ const Expenses: React.FC = () => {
     const categoryMap = new Map<string, number>();
     let total = 0;
     
-    expenses.forEach(expense => {
+    filteredExpenses.forEach(expense => {
       categoryMap.set(expense.category, (categoryMap.get(expense.category) || 0) + expense.amount);
       total += expense.amount;
     });
@@ -195,7 +257,7 @@ const Expenses: React.FC = () => {
     const memberColors = new Map<string, string>();
     const colors = ['#ef4444', '#f59e0b', '#0ea5e9', '#10b981', '#8b5cf6', '#ec4899'];
     
-    expenses.forEach(expense => {
+    filteredExpenses.forEach(expense => {
       const memberName = expense.member?.name || 'Unknown';
       memberMap.set(memberName, (memberMap.get(memberName) || 0) + expense.amount);
       if (!memberColors.has(memberName)) {
@@ -216,7 +278,7 @@ const Expenses: React.FC = () => {
   const expenseByCategory = processCategoryData();
   const expenseByMember = processMemberData();
 
-  const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+  const totalExpenses = filteredExpenses.reduce((sum, t) => sum + t.amount, 0);
   const highestCategory = expenseByCategory[0] || { category: 'N/A', amount: 0 };
   const topSpender = expenseByMember[0] || { memberName: 'N/A', amount: 0 };
 
@@ -448,13 +510,27 @@ const Expenses: React.FC = () => {
         searchPlaceholder="Search expense transactions..."
         actions={
           <>
-            <select className={styles.filterSelect}>
-              <option>All Months</option>
-              <option>January 2024</option>
-              <option>December 2023</option>
+            <select
+              className={styles.filterSelect}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              {getMonthOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
-            <select className={styles.filterSelect}>
-              <option value="">All Members</option>
+            <select
+              className={styles.filterSelect}
+              value={selectedMember}
+              onChange={(e) => setSelectedMember(e.target.value)}
+            >
+              {getMemberOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </>
         }
@@ -574,9 +650,9 @@ const Expenses: React.FC = () => {
       </div>
 
       {/* Data Table */}
-      <Card title="Expense Transactions" subtitle={`${expenses.length} transactions`}>
+      <Card title="Expense Transactions" subtitle={`${filteredExpenses.length} transactions`}>
         <Table
-          data={expenses}
+          data={filteredExpenses}
           columns={columns}
         />
       </Card>
