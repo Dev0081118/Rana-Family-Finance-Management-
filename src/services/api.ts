@@ -373,4 +373,10 @@ export const investmentService = {
   getSummary: () => requestWithRetry(() => api.get('/investments/summary')),
 };
 
+// Analytics services
+export const analyticsService = {
+  getDashboard: (filter?: 'today' | 'month' | 'all') =>
+    requestWithRetry(() => api.get('/analytics', { params: { filter } })),
+};
+
 export default api;

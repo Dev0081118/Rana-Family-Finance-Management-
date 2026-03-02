@@ -65,6 +65,31 @@
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
 }
 
+.filterButton {
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.filterButton:hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color-hover);
+  color: var(--text-primary);
+}
+
+.filterButtonActive {
+  background-color: var(--bg-primary);
+  border-color: var(--border-primary);
+  color: var(--text-on-primary);
+}
+
 .filterActions {
   display: flex;
   gap: var(--space-2);

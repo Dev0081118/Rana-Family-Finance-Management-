@@ -16,6 +16,7 @@ const incomeRoutes = require('./routes/incomeRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const savingsRoutes = require('./routes/savingsRoutes');
 const investmentRoutes = require('./routes/investmentRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 const app = express();
 
@@ -69,6 +70,7 @@ app.use('/api/v1/income', incomeRoutes);
 app.use('/api/v1/expenses', expenseRoutes);
 app.use('/api/v1/savings', savingsRoutes);
 app.use('/api/v1/investments', investmentRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
 
 app.use('*', (req, res) => {
   res.status(404).json({

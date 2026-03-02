@@ -8,6 +8,9 @@ interface FilterBarProps {
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
   actions?: React.ReactNode;
+  options?: Array<{ value: string; label: string }>;
+  selected?: string;
+  onChange?: (value: string) => void;
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({
@@ -16,6 +19,9 @@ const FilterBar: React.FC<FilterBarProps> = ({
   onSearchChange,
   searchPlaceholder = 'Search...',
   actions,
+  options,
+  selected,
+  onChange
 }) => {
   return (
     <div className={styles.filterBar}>
@@ -35,7 +41,19 @@ const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       <div className={styles.filterGroup}>
-        {children}
+        {options && selected !== undefined && onChange ? (
+          options.map((option) => (
+            <button
+              key={option.value}
+              className={`${styles.filterButton} ${selected === option.value ? styles.filterButtonActive : ''}`}
+              onClick={() => onChange(option.value)}
+            >
+              {option.label}
+            </button>
+          ))
+        ) : (
+          children
+        )}
       </div>
 
       {actions && <div className={styles.filterActions}>{actions}</div>}

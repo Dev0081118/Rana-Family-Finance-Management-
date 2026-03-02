@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Save, User, Users as UsersIcon, Edit2 } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -48,16 +49,20 @@ const Profile: React.FC = () => {
   }, []);
 
   // Parse URL query parameters to determine mode
+  const [searchParams] = useSearchParams();
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
+    const mode = searchParams.get('mode');
     if (mode === 'edit') {
       setEditMode('profile');
       setIsEditing(true);
     } else if (mode === 'members') {
       setEditMode('members');
+    } else {
+      setEditMode('profile');
+      setIsEditing(false);
     }
-  }, []);
+  }, [searchParams]);
 
   // Fetch user profile or members based on mode
   useEffect(() => {

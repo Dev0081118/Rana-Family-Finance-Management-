@@ -7,6 +7,7 @@ import Income from './pages/Income';
 import Expenses from './pages/Expenses';
 import Savings from './pages/Savings';
 import Investments from './pages/Investments';
+import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Login from './pages/Profile/Login';
 import AddIncome from './pages/Income/AddIncome';
@@ -45,6 +46,13 @@ const App: React.FC = () => {
               <ProtectedRoute>
                 <MainLayout currentMonth={currentMonth} onMonthChange={handleMonthChange}>
                   <Income />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <MainLayout currentMonth={currentMonth} onMonthChange={handleMonthChange}>
+                  <Dashboard />
                 </MainLayout>
               </ProtectedRoute>
             } />
