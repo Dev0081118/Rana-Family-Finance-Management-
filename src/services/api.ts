@@ -367,10 +367,4 @@ export const investmentService = {
   getSummary: () => requestWithRetry(() => api.get('/investments/summary')),
 };
 
-// Analytics services
-export const analyticsService = {
-  getDashboardData: (config?: { signal?: AbortSignal }) =>
-    requestWithRetry(() => api.get('/analytics/dashboard', { ...config })),
-};
-
 export default api;

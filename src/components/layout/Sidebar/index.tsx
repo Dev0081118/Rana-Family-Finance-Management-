@@ -1,13 +1,11 @@
 import React, { useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
   TrendingUp,
   TrendingDown,
   PiggyBank,
-  BarChart3,
-  User,
   Wallet,
+  User,
   LogIn,
   LogOut,
   Settings,
@@ -26,12 +24,10 @@ interface SidebarProps {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/' },
   { id: 'income', label: 'Income', icon: <TrendingUp size={20} />, path: '/income' },
   { id: 'expenses', label: 'Expenses', icon: <TrendingDown size={20} />, path: '/expenses' },
   { id: 'savings', label: 'Savings', icon: <PiggyBank size={20} />, path: '/savings' },
   { id: 'investments', label: 'Investments', icon: <Wallet size={20} />, path: '/investments' },
-  { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={20} />, path: '/analytics' },
   { id: 'profile', label: 'Profile', icon: <User size={20} />, path: '/profile' },
 ];
 
@@ -124,7 +120,6 @@ const Sidebar: React.FC<SidebarProps> = ({
               <NavLink
                 to={item.path}
                 className={({ isActive }) => `${styles.navLink} ${isActive ? styles.active : ''}`}
-                end={item.id === 'dashboard'}
                 onClick={() => isMobile && mobileOpen && onClose()}
               >
                 <span className={styles.navIcon}>{item.icon}</span>

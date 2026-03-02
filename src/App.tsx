@@ -3,12 +3,10 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import MainLayout from './components/layout/MainLayout';
-import Dashboard from './pages/Dashboard';
 import Income from './pages/Income';
 import Expenses from './pages/Expenses';
 import Savings from './pages/Savings';
 import Investments from './pages/Investments';
-import Analytics from './pages/Analytics';
 import Profile from './pages/Profile';
 import Login from './pages/Profile/Login';
 import AddIncome from './pages/Income/AddIncome';
@@ -39,7 +37,7 @@ const App: React.FC = () => {
             <Route path="/" element={
               <ProtectedRoute>
                 <MainLayout currentMonth={currentMonth} onMonthChange={handleMonthChange}>
-                  <Dashboard />
+                  <Income />
                 </MainLayout>
               </ProtectedRoute>
             } />
@@ -96,13 +94,6 @@ const App: React.FC = () => {
               <ProtectedRoute>
                 <MainLayout currentMonth={currentMonth} onMonthChange={handleMonthChange}>
                   <AddInvestment />
-                </MainLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/analytics" element={
-              <ProtectedRoute>
-                <MainLayout currentMonth={currentMonth} onMonthChange={handleMonthChange}>
-                  <Analytics />
                 </MainLayout>
               </ProtectedRoute>
             } />

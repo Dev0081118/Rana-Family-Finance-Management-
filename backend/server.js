@@ -16,7 +16,6 @@ const incomeRoutes = require('./routes/incomeRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const savingsRoutes = require('./routes/savingsRoutes');
 const investmentRoutes = require('./routes/investmentRoutes');
-const analyticsRoutes = require('./routes/analyticsRoutes');
 
 const app = express();
 
@@ -42,10 +41,6 @@ const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
-    // Skip rate limiting for dashboard endpoint (has its own caching)
-    return req.path === '/api/v1/analytics/dashboard';
-  }
 });
 app.use('/api/', limiter);
 
@@ -74,7 +69,6 @@ app.use('/api/v1/income', incomeRoutes);
 app.use('/api/v1/expenses', expenseRoutes);
 app.use('/api/v1/savings', savingsRoutes);
 app.use('/api/v1/investments', investmentRoutes);
-app.use('/api/v1/analytics', analyticsRoutes);
 
 app.use('*', (req, res) => {
   res.status(404).json({
