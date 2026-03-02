@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Save, User, Users as UsersIcon, Edit2 } from 'lucide-react';
+import { Save, User, Users as UsersIcon, Edit2, Lock, Eye, EyeOff } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { authService } from '../../services/api';
@@ -34,6 +34,17 @@ const Profile: React.FC = () => {
     role: 'member' as 'admin' | 'member',
   });
   const [editMode, setEditMode] = useState<'profile' | 'members'>('profile');
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Memoize currentUser to prevent infinite loop
   const currentUser = useMemo(() => authService.getCurrentUser(), []);
@@ -175,6 +186,69 @@ const Profile: React.FC = () => {
       });
     }
     setError('');
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    // Validation
+    if (!passwordData.currentPassword) {
+      setError('Current password is required');
+      return;
+    }
+    if (!passwordData.newPassword) {
+      setError('New password is required');
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      setError('New password must be at least 6 characters');
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError('New password and confirm password do not match');
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      const response = await authService.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+
+      setSuccess('Password changed successfully!');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+
+      // Update token in localStorage
+      localStorage.setItem('token', response.data.token);
+
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to change password');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handlePasswordInputChange = (field: string, value: string) => {
+    setPasswordData(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+    setError('');
+  };
+
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
   };
 
   const getInitials = (name: string) => {
@@ -445,6 +519,95 @@ const Profile: React.FC = () => {
             </Button>
           )}
         </div>
+      </Card>
+
+      <Card title="Security" className={styles.securitySection}>
+        <h3 className={styles.securityTitle}>Change Password</h3>
+        <p className={styles.securityDescription}>
+          Update your password to keep your account secure
+        </p>
+
+        {success && <div className={styles.successMessage}>{success}</div>}
+        {error && <div className={styles.errorMessage}>{error}</div>}
+
+        <form onSubmit={handlePasswordChange} className={styles.passwordForm}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Current Password</label>
+            <div className={styles.passwordInputWrapper}>
+              <input
+                type={showPasswords.current ? 'text' : 'password'}
+                className={styles.formInput}
+                value={passwordData.currentPassword}
+                onChange={(e) => handlePasswordInputChange('currentPassword', e.target.value)}
+                placeholder="Enter current password"
+                disabled={isChangingPassword}
+              />
+              <button
+                type="button"
+                className={styles.passwordToggle}
+                onClick={() => togglePasswordVisibility('current')}
+                tabIndex={-1}
+              >
+                {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>New Password</label>
+            <div className={styles.passwordInputWrapper}>
+              <input
+                type={showPasswords.new ? 'text' : 'password'}
+                className={styles.formInput}
+                value={passwordData.newPassword}
+                onChange={(e) => handlePasswordInputChange('newPassword', e.target.value)}
+                placeholder="Enter new password"
+                disabled={isChangingPassword}
+              />
+              <button
+                type="button"
+                className={styles.passwordToggle}
+                onClick={() => togglePasswordVisibility('new')}
+                tabIndex={-1}
+              >
+                {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Confirm New Password</label>
+            <div className={styles.passwordInputWrapper}>
+              <input
+                type={showPasswords.confirm ? 'text' : 'password'}
+                className={styles.formInput}
+                value={passwordData.confirmPassword}
+                onChange={(e) => handlePasswordInputChange('confirmPassword', e.target.value)}
+                placeholder="Re-enter new password"
+                disabled={isChangingPassword}
+              />
+              <button
+                type="button"
+                className={styles.passwordToggle}
+                onClick={() => togglePasswordVisibility('confirm')}
+                tabIndex={-1}
+              >
+                {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-6)' }}>
+            <Button
+              type="submit"
+              leftIcon={<Lock size={16} />}
+              loading={isChangingPassword}
+              disabled={isChangingPassword}
+            >
+              Change Password
+            </Button>
+          </div>
+        </form>
       </Card>
     </div>
   );

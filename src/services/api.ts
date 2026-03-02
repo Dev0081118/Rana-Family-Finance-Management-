@@ -297,6 +297,8 @@ export const authService = {
   },
   updateProfile: (data: { name?: string; email?: string; avatar?: string }) =>
     requestWithRetry(() => api.put('/auth/profile', data)),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    requestWithRetry(() => api.put('/auth/change-password', data)),
   getAllUsers: () =>
     requestWithRetry(() => api.get('/auth/users')),
   updateUser: (userId: string, data: { name?: string; email?: string; role?: 'admin' | 'member' }) =>

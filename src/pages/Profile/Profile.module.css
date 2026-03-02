@@ -295,6 +295,66 @@
   }
 }
 
+/* Security Section Styles */
+.securitySection {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-color);
+  padding: var(--space-6);
+}
+
+.securityTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.securityDescription {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-6);
+}
+
+.passwordForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.passwordInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordInputWrapper .formInput {
+  padding-right: var(--space-12);
+}
+
+.passwordToggle {
+  position: absolute;
+  right: var(--space-3);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast);
+}
+
+.passwordToggle:hover {
+  color: var(--text-primary);
+}
+
+.passwordToggle:focus {
+  outline: none;
+  color: var(--text-primary);
+}
+
 .errorMessage {
   padding: var(--space-3) var(--space-4);
   background-color: rgba(239, 68, 68, 0.1);
