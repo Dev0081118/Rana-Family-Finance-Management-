@@ -94,7 +94,7 @@ const Topbar: React.FC<TopbarProps> = ({
         </button>
 
         <h1 className={`${styles.appTitle} ${isMobile ? styles.appTitleMobile : ''}`}>
-          Family Finance
+          Rana Family Finance
         </h1>
 
         <div className={styles.monthSelectorWrapper}>

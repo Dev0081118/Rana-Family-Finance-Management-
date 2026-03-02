@@ -59,7 +59,7 @@ describe('Authentication Flow', () => {
 
     // Should show dashboard content
     await waitFor(() => {
-      expect(screen.getByText('Welcome to Family Finance')).toBeInTheDocument();
+      expect(screen.getByText('Welcome to Rana Family Finance')).toBeInTheDocument();
     });
   });
 

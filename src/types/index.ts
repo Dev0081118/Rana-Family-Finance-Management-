@@ -106,6 +106,54 @@ export interface SavingsTransaction {
   description: string;
 }
 
+// Loan types
+export interface Loan {
+  id: string;
+  name: string;
+  lender: string;
+  loanAmount: number;
+  interestRate: number; // annual interest rate as percentage
+  term: number; // total term in months
+  monthlyInstallment: number;
+  totalAmountToPay: number;
+  totalInterestPayable: number;
+  amountPaid: number;
+  remainingBalance: number;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'completed' | 'overdue' | 'pending';
+  collateral?: string;
+  purpose: string;
+  memberId: string;
+  memberName: string;
+  createdAt: string;
+}
+
+export interface LoanRepayment {
+  id: string;
+  loanId: string;
+  amount: number;
+  paymentDate: string;
+  dueDate: string;
+  principalAmount: number;
+  interestAmount: number;
+  remainingBalanceAfterPayment: number;
+  paymentMethod: string;
+  notes?: string;
+  status: 'on-time' | 'late' | 'missed';
+}
+
+export interface LoanSummary {
+  totalLoans: number;
+  totalLoanAmount: number;
+  totalRemainingBalance: number;
+  totalMonthlyPayments: number;
+  totalInterestPaid: number;
+  totalInterestRemaining: number;
+  overdueLoans: number;
+  upcomingPayments: number;
+}
+
 // Filter types
 export interface DateFilter {
   month: number;

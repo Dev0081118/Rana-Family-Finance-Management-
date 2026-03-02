@@ -1,4 +1,4 @@
-# Family Finance - Home Finance Management App
+# Rana Family Finance - Home Finance Management App
 
 A modern, responsive, multi-user Home Finance Management Web Application built with React, TypeScript, and Recharts.
 

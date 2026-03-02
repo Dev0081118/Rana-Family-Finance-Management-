@@ -10,6 +10,7 @@ import {
   LogOut,
   Settings,
   BarChart3,
+  Coins,
 } from 'lucide-react';
 import { NavItem } from '../../../types';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { id: 'expenses', label: 'Expenses', icon: <TrendingDown size={20} />, path: '/expenses' },
   { id: 'savings', label: 'Savings', icon: <PiggyBank size={20} />, path: '/savings' },
   { id: 'investments', label: 'Investments', icon: <Wallet size={20} />, path: '/investments' },
+  { id: 'loans', label: 'Loans', icon: <Coins size={20} />, path: '/loans' },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -110,7 +112,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <path d="M2 17l10 5 10-5" />
             <path d="M2 12l10 5 10-5" />
           </svg>
-          <span className={styles.logoText}>Family Finance</span>
+          <span className={styles.logoText}>Rana Family Finance</span>
         </div>
       </div>
 

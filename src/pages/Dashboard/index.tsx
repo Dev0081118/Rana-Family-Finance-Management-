@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useErrorHandler } from '../../hooks/useErrorHandler';
-import { analyticsService } from '../../services/api';
+import { analyticsService, loanService } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import FilterBar from '../../components/common/FilterBar';
 import SummaryCards from './components/SummaryCards';
@@ -24,11 +24,21 @@ interface DashboardData {
   };
 }
 
+interface LoanSummary {
+  totalLoans: number;
+  totalLoanAmount: number;
+  totalRemainingBalance: number;
+  totalMonthlyPayments: number;
+  totalInterestPayable: number;
+  overdueLoans: number;
+}
+
 type FilterType = 'today' | 'month' | 'all';
 
 const Dashboard: React.FC = () => {
   const [filter, setFilter] = useState<FilterType>('all');
   const [data, setData] = useState<DashboardData | null>(null);
+  const [loanSummary, setLoanSummary] = useState<LoanSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { error, handleError, clearError } = useErrorHandler();
@@ -42,12 +52,19 @@ const Dashboard: React.FC = () => {
       }
       clearError();
 
-      const response = await analyticsService.getDashboard(currentFilter);
+      const [dashboardResponse, loanResponse] = await Promise.all([
+        analyticsService.getDashboard(currentFilter),
+        loanService.getSummary()
+      ]);
       
-      if (response.data.success) {
-        setData(response.data.data);
+      if (dashboardResponse.data.success) {
+        setData(dashboardResponse.data.data);
       } else {
-        throw new Error(response.data.message || 'Failed to fetch dashboard data');
+        throw new Error(dashboardResponse.data.message || 'Failed to fetch dashboard data');
+      }
+
+      if (loanResponse.data.success) {
+        setLoanSummary(loanResponse.data.data);
       }
     } catch (err) {
       handleError(err as Error);
@@ -117,7 +134,7 @@ const Dashboard: React.FC = () => {
 
       {data && (
         <>
-          <SummaryCards summary={data.summary} />
+          <SummaryCards summary={data.summary} loanSummary={loanSummary} />
 
           <div className={styles.chartsGrid}>
             <div className={styles.chartFullWidth}>

@@ -6,8 +6,9 @@ const getAllExpenses = asyncHandler(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  const query = { member: req.user._id };
-
+  // Members and admin can view all records
+  let query = {};
+  
   if (req.query.category) {
     query.category = req.query.category;
   }
@@ -132,7 +133,8 @@ const deleteExpense = asyncHandler(async (req, res, next) => {
 const getExpenseSummary = asyncHandler(async (req, res, next) => {
   const { startDate, endDate } = req.query;
 
-  const query = { member: req.user._id };
+  // Members and admin can view all data
+  let query = {};
   if (startDate || endDate) {
     query.date = {};
     if (startDate) query.date.$gte = new Date(startDate);

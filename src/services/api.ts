@@ -373,6 +373,53 @@ export const investmentService = {
   getSummary: () => requestWithRetry(() => api.get('/investments/summary')),
 };
 
+// Loan services
+export const loanService = {
+  getAll: (params?: { page?: number; limit?: number; status?: string; startDate?: string; endDate?: string; sortBy?: string; sortOrder?: string }) =>
+    requestWithRetry(() => api.get('/loans', { params })),
+  getById: (id: string) => requestWithRetry(() => api.get(`/loans/${id}`)),
+  create: (data: {
+    name: string;
+    lender: string;
+    loanAmount: number;
+    interestRate: number;
+    term: number;
+    startDate: string;
+    endDate: string;
+    purpose: string;
+    collateral?: string;
+    memberId?: string;
+  }) => requestWithRetry(() => api.post('/loans', data)),
+  update: (id: string, data: {
+    name?: string;
+    lender?: string;
+    loanAmount?: number;
+    interestRate?: number;
+    term?: number;
+    startDate?: string;
+    endDate?: string;
+    purpose?: string;
+    collateral?: string;
+    status?: 'active' | 'completed' | 'overdue' | 'pending';
+  }) => requestWithRetry(() => api.put(`/loans/${id}`, data)),
+  delete: (id: string) => requestWithRetry(() => api.delete(`/loans/${id}`)),
+  getSummary: () => requestWithRetry(() => api.get('/loans/summary')),
+  getRepayments: (loanId: string) => requestWithRetry(() => api.get(`/loans/${loanId}/repayments`)),
+  addRepayment: (loanId: string, data: {
+    amount: number;
+    paymentDate: string;
+    paymentMethod: string;
+    notes?: string;
+  }) => requestWithRetry(() => api.post(`/loans/${loanId}/repayments`, data)),
+  updateRepayment: (loanId: string, repaymentId: string, data: {
+    amount?: number;
+    paymentDate?: string;
+    paymentMethod?: string;
+    notes?: string;
+  }) => requestWithRetry(() => api.put(`/loans/${loanId}/repayments/${repaymentId}`, data)),
+  deleteRepayment: (loanId: string, repaymentId: string) => requestWithRetry(() => api.delete(`/loans/${loanId}/repayments/${repaymentId}`)),
+};
+
 // Analytics services
 export const analyticsService = {
   getDashboard: (filter?: 'today' | 'month' | 'all') =>

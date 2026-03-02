@@ -189,7 +189,7 @@ const Login: React.FC = () => {
   return (
     <div className={styles.loginPage}>
       <div className={styles.loginCard}>
-        <h1 className={styles.loginTitle}>Home Finance App</h1>
+        <h1 className={styles.loginTitle}>Rana Family Finance</h1>
         <p className={styles.loginSubtitle}>
           {mode === 'login' ? 'Sign in to your account' : 'Create a new account'}
         </p>

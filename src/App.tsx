@@ -7,6 +7,7 @@ import Income from './pages/Income';
 import Expenses from './pages/Expenses';
 import Savings from './pages/Savings';
 import Investments from './pages/Investments';
+import Loans from './pages/Loans';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Login from './pages/Profile/Login';
@@ -14,11 +15,20 @@ import AddIncome from './pages/Income/AddIncome';
 import AddExpense from './pages/Expenses/AddExpense';
 import AddSavings from './pages/Savings/AddSavings';
 import AddInvestment from './pages/Investments/AddInvestment';
+import AddLoan from './pages/Loans/AddLoan';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import './styles/global.css';
 
 const App: React.FC = () => {
-  const [currentMonth] = useState('January 2024');
+  // Get current date in format: "2 March 2026"
+  const getCurrentDate = () => {
+    const now = new Date();
+    const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    return `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  };
+
+  const [currentMonth] = useState(getCurrentDate());
 
   const handleMonthChange = () => {
     // TODO: Implement month selector modal
@@ -95,6 +105,20 @@ const App: React.FC = () => {
               <ProtectedRoute>
                 <MainLayout currentMonth={currentMonth} onMonthChange={handleMonthChange}>
                   <Investments />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/loans" element={
+              <ProtectedRoute>
+                <MainLayout currentMonth={currentMonth} onMonthChange={handleMonthChange}>
+                  <Loans />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/loans/add" element={
+              <ProtectedRoute>
+                <MainLayout currentMonth={currentMonth} onMonthChange={handleMonthChange}>
+                  <AddLoan />
                 </MainLayout>
               </ProtectedRoute>
             } />

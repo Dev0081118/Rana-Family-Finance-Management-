@@ -26,25 +26,19 @@ const getDateFilter = (filter) => {
 // Main dashboard analytics endpoint
 const getDashboardAnalytics = asyncHandler(async (req, res, next) => {
   const { filter = 'all' } = req.query;
-  const userId = req.user._id;
   
-  // Build base query with user filter
-  const baseQuery = { member: userId };
+  // Members and admin can view all data
+  // No member filter applied
   
   // Add date filter if not 'all'
   const dateFilter = getDateFilter(filter);
-  if (dateFilter) {
-    // For Income and Expense, we use date field
-    // For Investment, we use purchaseDate
-    // For Savings, we use date field
-  }
   
   // ========== AGGREGATION PIPELINES ==========
   
   // 1. Total Income
-  const incomeQuery = dateFilter 
-    ? { ...baseQuery, date: dateFilter }
-    : baseQuery;
+  const incomeQuery = dateFilter
+    ? { date: dateFilter }
+    : {};
   
   const totalIncome = await Income.aggregate([
     { $match: incomeQuery },
@@ -52,9 +46,9 @@ const getDashboardAnalytics = asyncHandler(async (req, res, next) => {
   ]);
   
   // 2. Total Expenses
-  const expenseQuery = dateFilter 
-    ? { ...baseQuery, date: dateFilter }
-    : baseQuery;
+  const expenseQuery = dateFilter
+    ? { date: dateFilter }
+    : {};
   
   const totalExpenses = await Expense.aggregate([
     { $match: expenseQuery },
@@ -62,9 +56,9 @@ const getDashboardAnalytics = asyncHandler(async (req, res, next) => {
   ]);
   
   // 3. Total Investments (using investedAmount)
-  const investmentQuery = dateFilter 
-    ? { ...baseQuery, purchaseDate: dateFilter }
-    : baseQuery;
+  const investmentQuery = dateFilter
+    ? { purchaseDate: dateFilter }
+    : {};
   
   const totalInvestments = await Investment.aggregate([
     { $match: investmentQuery },
@@ -72,9 +66,9 @@ const getDashboardAnalytics = asyncHandler(async (req, res, next) => {
   ]);
   
   // 4. Total Savings (deposits only - deposits are positive)
-  const savingsQuery = dateFilter 
-    ? { ...baseQuery, date: dateFilter }
-    : baseQuery;
+  const savingsQuery = dateFilter
+    ? { date: dateFilter }
+    : {};
   
   const totalSavings = await Savings.aggregate([
     { $match: savingsQuery },

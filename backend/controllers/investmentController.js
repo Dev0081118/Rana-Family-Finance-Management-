@@ -6,8 +6,9 @@ const getAllInvestments = asyncHandler(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  const query = { member: req.user._id };
-
+  // Members and admin can view all records
+  let query = {};
+  
   if (req.query.assetType) {
     query.assetType = req.query.assetType;
   }
@@ -132,8 +133,11 @@ const deleteInvestment = asyncHandler(async (req, res, next) => {
 });
 
 const getInvestmentSummary = asyncHandler(async (req, res, next) => {
+  // Members and admin can view all data
+  const matchStage = {};
+  
   const summary = await Investment.aggregate([
-    { $match: { member: req.user._id } },
+    { $match: matchStage },
     {
       $group: {
         _id: '$assetType',
@@ -148,7 +152,7 @@ const getInvestmentSummary = asyncHandler(async (req, res, next) => {
   ]);
 
   const overall = await Investment.aggregate([
-    { $match: { member: req.user._id } },
+    { $match: matchStage },
     {
       $group: {
         _id: null,
@@ -180,12 +184,15 @@ const getInvestmentSummary = asyncHandler(async (req, res, next) => {
 const getTopPerformers = asyncHandler(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 5;
 
-  const topPerformers = await Investment.find({ member: req.user._id })
+  // Members and admin can view all data
+  const query = {};
+  
+  const topPerformers = await Investment.find(query)
     .sort({ roi: -1 })
     .limit(limit)
     .lean();
 
-  const worstPerformers = await Investment.find({ member: req.user._id })
+  const worstPerformers = await Investment.find(query)
     .sort({ roi: 1 })
     .limit(limit)
     .lean();

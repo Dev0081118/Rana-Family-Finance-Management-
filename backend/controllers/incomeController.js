@@ -6,8 +6,11 @@ const getAllIncomes = asyncHandler(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  const query = { member: req.user._id };
-
+  // Members and admin can view all records
+  let query = {};
+  
+  // Only apply member filter for admin if they want to see specific member's data
+  // But by default, both admin and member see all data
   if (req.query.category) {
     query.category = req.query.category;
   }
@@ -132,7 +135,8 @@ const deleteIncome = asyncHandler(async (req, res, next) => {
 const getIncomeSummary = asyncHandler(async (req, res, next) => {
   const { startDate, endDate } = req.query;
 
-  const query = { member: req.user._id };
+  // Members and admin can view all data
+  let query = {};
   if (startDate || endDate) {
     query.date = {};
     if (startDate) query.date.$gte = new Date(startDate);

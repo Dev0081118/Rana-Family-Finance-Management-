@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, LineChart, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, LineChart, Target, Coins, AlertTriangle, Calendar } from 'lucide-react';
 import styles from './SummaryCards.module.css';
 
 interface SummaryCardsProps {
@@ -11,6 +11,14 @@ interface SummaryCardsProps {
     netBalance: number;
     savingsRate: number;
   };
+  loanSummary?: {
+    totalLoans: number;
+    totalLoanAmount: number;
+    totalRemainingBalance: number;
+    totalMonthlyPayments: number;
+    totalInterestPayable: number;
+    overdueLoans: number;
+  } | null;
 }
 
 const formatCurrency = (amount: number): string => {
@@ -22,7 +30,7 @@ const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
+const SummaryCards: React.FC<SummaryCardsProps> = ({ summary, loanSummary }) => {
   const cards = [
     {
       title: 'Total Income',
@@ -63,12 +71,32 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
       title: 'Savings Rate',
       value: `${summary.savingsRate.toFixed(1)}%`,
       icon: Target,
-      color: summary.savingsRate >= 20 ? 'var(--color-success)' : 
+      color: summary.savingsRate >= 20 ? 'var(--color-success)' :
              summary.savingsRate >= 10 ? 'var(--color-warning)' : 'var(--color-error)',
-      bgColor: summary.savingsRate >= 20 ? 'var(--bg-success-light)' : 
+      bgColor: summary.savingsRate >= 20 ? 'var(--bg-success-light)' :
                summary.savingsRate >= 10 ? 'var(--bg-warning-light)' : 'var(--bg-error-light)'
     }
   ];
+
+  // Add loan summary cards if available
+  if (loanSummary) {
+    cards.push(
+      {
+        title: 'Total Loans',
+        value: loanSummary.totalLoans.toString(),
+        icon: Coins,
+        color: 'var(--color-primary)',
+        bgColor: 'var(--bg-primary-light)'
+      },
+      {
+        title: 'Loan Amount',
+        value: formatCurrency(loanSummary.totalLoanAmount),
+        icon: Coins,
+        color: 'var(--color-warning)',
+        bgColor: 'var(--bg-warning-light)'
+      }
+    );
+  }
 
   return (
     <div className={styles.summaryCards}>
