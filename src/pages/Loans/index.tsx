@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Eye, Edit2, Trash2, Coins, TrendingUp, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Eye, Edit2, Trash2, Coins, TrendingUp, Calendar, DollarSign, BarChart3, Target } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, Legend } from 'recharts';
 import Card from '../../components/common/Card';
 import ChartCard from '../../components/charts/ChartCard';
 import Button from '../../components/common/Button';
@@ -191,11 +191,21 @@ const Loans: React.FC = () => {
     const overdueLoans = filteredLoans.filter(loan => loan.status === 'overdue').length;
     
     // Calculate upcoming payments (loans with next payment due in next 7 days)
-    const today = new Date();
     const upcomingPayments = filteredLoans.filter(loan => {
       if (loan.status !== 'active') return false;
       // Simple check - in real app would track next payment date
       return loan.remainingBalance > 0;
+    }).length;
+    
+    // Calculate average interest rate
+    const avgInterestRate = totalLoans > 0
+      ? filteredLoans.reduce((sum, loan) => sum + loan.interestRate, 0) / totalLoans
+      : 0;
+    
+    // Calculate loans nearly paid off (>= 90% paid)
+    const nearlyPaidOff = filteredLoans.filter(loan => {
+      const progress = ((loan.loanAmount - loan.remainingBalance) / loan.loanAmount) * 100;
+      return progress >= 90 && loan.status === 'active';
     }).length;
 
     return {
@@ -207,6 +217,8 @@ const Loans: React.FC = () => {
       totalInterestRemaining,
       overdueLoans,
       upcomingPayments,
+      avgInterestRate,
+      nearlyPaidOff,
     };
   };
 
@@ -229,33 +241,37 @@ const Loans: React.FC = () => {
     return Array.from(statusMap.entries()).map(([status, count]) => ({
       status: status.charAt(0).toUpperCase() + status.slice(1),
       count,
+      value: count,
       color: colors[status as keyof typeof colors] || '#6b7280',
+      percentage: filteredLoans.length > 0 ? ((count / filteredLoans.length) * 100).toFixed(1) : 0,
     }));
   };
 
   const processLoanAmountData = () => {
     return filteredLoans.map(loan => ({
-      name: loan.name,
+      name: loan.name.length > 12 ? loan.name.substring(0, 12) + '...' : loan.name,
+      fullName: loan.name,
       loanAmount: loan.loanAmount,
       remaining: loan.remainingBalance,
       paid: loan.loanAmount - loan.remainingBalance,
+      progress: ((loan.loanAmount - loan.remainingBalance) / loan.loanAmount) * 100,
     }));
   };
 
   const processMonthlyPaymentData = () => {
-    const monthlyMap = new Map<string, { principal: number; interest: number; total: number }>();
+    const monthlyMap = new Map<string, { principal: number; interest: number; total: number; count: number }>();
     
     filteredLoans.forEach(loan => {
-      // Estimate monthly breakdown (principal + interest)
       const monthlyPrincipal = loan.loanAmount / loan.term;
       const monthlyInterest = loan.monthlyInstallment - monthlyPrincipal;
       
-      const monthKey = loan.startDate.substring(0, 7); // YYYY-MM
-      const existing = monthlyMap.get(monthKey) || { principal: 0, interest: 0, total: 0 };
+      const monthKey = loan.startDate.substring(0, 7);
+      const existing = monthlyMap.get(monthKey) || { principal: 0, interest: 0, total: 0, count: 0 };
       monthlyMap.set(monthKey, {
         principal: existing.principal + monthlyPrincipal,
         interest: existing.interest + monthlyInterest,
         total: existing.total + loan.monthlyInstallment,
+        count: existing.count + 1,
       });
     });
 
@@ -263,13 +279,117 @@ const Loans: React.FC = () => {
       .map(([date, values]) => ({
         date,
         ...values,
+        avgPayment: values.total / values.count,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  const processLoanPurposeData = () => {
+    const purposeMap = new Map<string, { count: number; amount: number }>();
+    
+    filteredLoans.forEach(loan => {
+      const purpose = loan.purpose || 'Unspecified';
+      const existing = purposeMap.get(purpose) || { count: 0, amount: 0 };
+      purposeMap.set(purpose, {
+        count: existing.count + 1,
+        amount: existing.amount + loan.loanAmount,
+      });
+    });
+
+    const colors = [
+      '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+      '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'
+    ];
+
+    return Array.from(purposeMap.entries())
+      .map(([purpose, values], index) => ({
+        purpose,
+        count: values.count,
+        amount: values.amount,
+        color: colors[index % colors.length],
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  };
+
+  const processInterestRateData = () => {
+    if (filteredLoans.length === 0) return [];
+    
+    const rates = filteredLoans.map(loan => loan.interestRate);
+    const minRate = Math.min(...rates);
+    const maxRate = Math.max(...rates);
+    
+    if (minRate === maxRate) {
+      return [{ range: `${minRate.toFixed(1)}%`, count: filteredLoans.length, min: minRate, max: maxRate }];
+    }
+    
+    const bucketCount = Math.min(5, Math.ceil((maxRate - minRate) / 2)) || 5;
+    const bucketSize = (maxRate - minRate) / bucketCount;
+    
+    const buckets = new Array(bucketCount).fill(0).map((_, i) => ({
+      range: `${(minRate + i * bucketSize).toFixed(1)}% - ${(minRate + (i + 1) * bucketSize).toFixed(1)}%`,
+      count: 0,
+      min: minRate + i * bucketSize,
+      max: minRate + (i + 1) * bucketSize,
+    }));
+    
+    rates.forEach(rate => {
+      const bucketIndex = Math.min(Math.floor((rate - minRate) / bucketSize), bucketCount - 1);
+      buckets[bucketIndex].count++;
+    });
+    
+    return buckets.filter(b => b.count > 0);
+  };
+
+  const processLenderComparisonData = () => {
+    const lenderMap = new Map<string, { count: number; amount: number; avgRate: number; totalBalance: number }>();
+    
+    filteredLoans.forEach(loan => {
+      const lender = loan.lender || 'Unknown';
+      const existing = lenderMap.get(lender) || { count: 0, amount: 0, avgRate: 0, totalBalance: 0 };
+      lenderMap.set(lender, {
+        count: existing.count + 1,
+        amount: existing.amount + loan.loanAmount,
+        totalBalance: existing.totalBalance + loan.remainingBalance,
+        avgRate: (existing.avgRate * existing.count + loan.interestRate) / (existing.count + 1),
+      });
+    });
+
+    return Array.from(lenderMap.entries())
+      .map(([lender, values]) => ({
+        lender: lender.length > 15 ? lender.substring(0, 15) + '...' : lender,
+        fullName: lender,
+        count: values.count,
+        amount: values.amount,
+        avgRate: values.avgRate,
+        totalBalance: values.totalBalance,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10);
+  };
+
+  const processPaymentProgressData = () => {
+    return filteredLoans
+      .filter(loan => loan.loanAmount > 0)
+      .map(loan => ({
+        name: loan.name.length > 10 ? loan.name.substring(0, 10) + '...' : loan.name,
+        fullName: loan.name,
+        progress: ((loan.loanAmount - loan.remainingBalance) / loan.loanAmount) * 100,
+        paid: loan.loanAmount - loan.remainingBalance,
+        remaining: loan.remainingBalance,
+        status: loan.status,
+        monthlyPayment: loan.monthlyInstallment,
+        monthsLeft: Math.ceil(loan.remainingBalance / loan.monthlyInstallment),
+      }))
+      .sort((a, b) => b.progress - a.progress);
   };
 
   const loanStatusData = processLoanStatusData();
   const loanAmountData = processLoanAmountData();
   const monthlyPaymentData = processMonthlyPaymentData();
+  const loanPurposeData = processLoanPurposeData();
+  const interestRateData = processInterestRateData();
+  const lenderComparisonData = processLenderComparisonData();
+  const paymentProgressData = processPaymentProgressData();
 
   // CRUD Action Handlers
   const handleView = async (loan: Loan) => {
@@ -514,6 +634,26 @@ const Loans: React.FC = () => {
             <p className={styles.summaryCardSubtext}>Loans need attention</p>
           </div>
         </Card>
+        <Card variant="primary">
+          <div className={styles.summaryCard}>
+            <div className={styles.summaryCardHeader}>
+              <BarChart3 size={20} />
+              <h3 className={styles.summaryCardTitle}>Avg Interest Rate</h3>
+            </div>
+            <p className={styles.summaryCardValue}>{formatPercentage(summary.avgInterestRate || 0)}</p>
+            <p className={styles.summaryCardSubtext}>Across all loans</p>
+          </div>
+        </Card>
+        <Card variant="success">
+          <div className={styles.summaryCard}>
+            <div className={styles.summaryCardHeader}>
+              <Target size={20} />
+              <h3 className={styles.summaryCardTitle}>Nearly Paid Off</h3>
+            </div>
+            <p className={styles.summaryCardValue}>{summary.nearlyPaidOff || 0}</p>
+            <p className={styles.summaryCardSubtext}>≥90% completed</p>
+          </div>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -549,7 +689,11 @@ const Loans: React.FC = () => {
 
       {/* Charts */}
       <div className={styles.chartsGrid}>
-        <ChartCard title="Loan Status Distribution">
+        {/* Loan Status Distribution - Enhanced Pie Chart */}
+        <ChartCard
+          title="Loan Status Distribution"
+          subtitle={`${filteredLoans.length} total loans`}
+        >
           <div className={styles.chartContainer}>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -558,10 +702,10 @@ const Loans: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ status, count }) => `${status} (${count})`}
+                  label={({ status, count, percentage }) => `${status}: ${percentage}%`}
                   outerRadius={80}
                   fill="#8884d8"
-                  dataKey="count"
+                  dataKey="value"
                 >
                   {loanStatusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -575,43 +719,43 @@ const Loans: React.FC = () => {
                     boxShadow: 'var(--shadow-lg)',
                     padding: 'var(--space-3)',
                   }}
+                  formatter={(value: number, _name: string, props: any) => [
+                    `${value} loans (${props.payload.percentage}%)`,
+                    props.payload.status
+                  ]}
                 />
+                <Legend />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
 
-        <ChartCard title="Loan Amount vs Remaining Balance">
+        {/* Loan Amount vs Remaining - Enhanced Bar Chart */}
+        <ChartCard
+          title="Loan Amount vs Remaining Balance"
+          subtitle={`${formatCurrency(summary.totalLoanAmount)} total`}
+        >
           <div className={styles.chartContainer}>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={loanAmountData}>
+              <BarChart data={loanAmountData} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="name" stroke="var(--text-tertiary)" fontSize={10} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={80} />
-                <YAxis stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value / 1000}k`} width={40} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-lg)',
-                    boxShadow: 'var(--shadow-lg)',
-                    padding: 'var(--space-3)',
-                  }}
-                  formatter={(value: number) => [formatCurrency(value), '']}
+                <XAxis
+                  type="number"
+                  stroke="var(--text-tertiary)"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `₹${value / 1000}k`}
                 />
-                <Bar dataKey="loanAmount" fill="#3b82f6" name="Loan Amount" />
-                <Bar dataKey="remaining" fill="#ef4444" name="Remaining" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-
-        <ChartCard title="Monthly Payment Breakdown">
-          <div className={styles.chartContainer}>
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={monthlyPaymentData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="date" stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value / 1000}k`} width={40} />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  stroke="var(--text-tertiary)"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  width={100}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'var(--bg-card)',
@@ -621,13 +765,217 @@ const Loans: React.FC = () => {
                     padding: 'var(--space-3)',
                   }}
                   formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                  labelFormatter={(label) => loanAmountData.find(d => d.name === label)?.fullName || label}
                 />
-                <Area type="monotone" dataKey="principal" stackId="1" stroke="#10b981" fill="#10b981" name="Principal" />
-                <Area type="monotone" dataKey="interest" stackId="1" stroke="#f59e0b" fill="#f59e0b" name="Interest" />
-              </AreaChart>
+                <Bar dataKey="loanAmount" fill="#3b82f6" name="Loan Amount" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="remaining" fill="#ef4444" name="Remaining" radius={[0, 4, 4, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
+
+        {/* Payment Progress - New Horizontal Bar Chart */}
+        <ChartCard
+          title="Payment Progress"
+          subtitle="Loans sorted by completion percentage"
+        >
+          <div className={styles.chartContainer}>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={paymentProgressData} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis
+                  type="number"
+                  domain={[0, 100]}
+                  stroke="var(--text-tertiary)"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${value}%`}
+                />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  stroke="var(--text-tertiary)"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  width={100}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: 'var(--shadow-lg)',
+                    padding: 'var(--space-3)',
+                  }}
+                  formatter={(value: number, _name: string, props: any) => {
+                    const item = paymentProgressData[props.payload.index];
+                    return [
+                      `${value.toFixed(1)}%`,
+                      `Progress: ${formatCurrency(item.paid)} paid of ${formatCurrency(item.paid + item.remaining)}`
+                    ];
+                  }}
+                  labelFormatter={(label) => paymentProgressData.find(d => d.name === label)?.fullName || label}
+                />
+                <Bar
+                  dataKey="progress"
+                  fill="#8b5cf6"
+                  name="Progress"
+                  radius={[0, 4, 4, 0]}
+                >
+                  {paymentProgressData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.status === 'overdue' ? '#ef4444' :
+                            entry.status === 'completed' ? '#6b7280' :
+                            entry.progress >= 75 ? '#10b981' :
+                            entry.progress >= 50 ? '#3b82f6' : '#f59e0b'}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        {/* Loan Purpose Distribution - New Donut Chart */}
+        <ChartCard
+          title="Loans by Purpose"
+          subtitle={`${loanPurposeData.reduce((sum, p) => sum + p.count, 0)} loans`}
+        >
+          <div className={styles.chartContainer}>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={loanPurposeData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ purpose, count }) => `${purpose}: ${count}`}
+                  outerRadius={80}
+                  innerRadius={40}
+                  fill="#8884d8"
+                  dataKey="amount"
+                >
+                  {loanPurposeData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: 'var(--shadow-lg)',
+                    padding: 'var(--space-3)',
+                  }}
+                  formatter={(value: number, name: string, props: any) => [
+                    `${formatCurrency(value)} (${props.payload.count} loans)`,
+                    props.payload.purpose
+                  ]}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        {/* Interest Rate Distribution - New Histogram */}
+        <ChartCard
+          title="Interest Rate Distribution"
+          subtitle={`Avg: ${formatPercentage(summary.avgInterestRate || 0)}`}
+        >
+          <div className={styles.chartContainer}>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={interestRateData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis
+                  dataKey="range"
+                  stroke="var(--text-tertiary)"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis
+                  stroke="var(--text-tertiary)"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: 'var(--shadow-lg)',
+                    padding: 'var(--space-3)',
+                  }}
+                  formatter={(value: number) => [`${value} loans`, 'Count']}
+                />
+                <Bar dataKey="count" fill="#8b5cf6" name="Number of Loans" radius={[4, 4, 0, 0]}>
+                  {interestRateData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={`hsl(${250 - index * 30}, 70%, 60%)`} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        {/* Lender Comparison - New Grouped Bar Chart */}
+        <ChartCard
+          title="Top Lenders by Loan Amount"
+          subtitle={`${lenderComparisonData.length} lenders`}
+        >
+          <div className={styles.chartContainer}>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={lenderComparisonData} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <XAxis
+                  type="number"
+                  stroke="var(--text-tertiary)"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `₹${value / 1000}k`}
+                />
+                <YAxis
+                  dataKey="lender"
+                  type="category"
+                  stroke="var(--text-tertiary)"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  width={100}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: 'var(--shadow-lg)',
+                    padding: 'var(--space-3)',
+                  }}
+                  formatter={(value: number, name: string, props: any) => {
+                    const item = lenderComparisonData[props.payload.index];
+                    if (name === 'amount') return [formatCurrency(value), 'Total Amount'];
+                    if (name === 'avgRate') return [`${value.toFixed(2)}%`, 'Avg Rate'];
+                    if (name === 'count') return [value, 'Loans'];
+                    return [value, name];
+                  }}
+                  labelFormatter={(label) => lenderComparisonData.find(d => d.lender === label)?.fullName || label}
+                />
+                <Bar dataKey="amount" fill="#3b82f6" name="Total Amount" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
       </div>
 
       {/* Loans Table */}

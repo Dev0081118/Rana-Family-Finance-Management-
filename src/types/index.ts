@@ -152,6 +152,8 @@ export interface LoanSummary {
   totalInterestRemaining: number;
   overdueLoans: number;
   upcomingPayments: number;
+  avgInterestRate?: number;
+  nearlyPaidOff?: number;
 }
 
 // Filter types
