@@ -5,10 +5,8 @@ import {
   TrendingDown,
   PiggyBank,
   Wallet,
-  User,
   LogIn,
   LogOut,
-  Settings,
   BarChart3,
   Coins,
 } from 'lucide-react';

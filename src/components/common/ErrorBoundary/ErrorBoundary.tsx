@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { ApiError, ErrorType } from '../../../services/api';
 import styles from './ErrorBoundary.module.css';
 
